@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Lukas' Website</title>
+</head>
+
+<body>
+    <div id="app">
+        <ul>
+            <li v-for="(url, index) of services" :key="index">
+                <a :href="url">{{ url.split(".", 1)[0] }}</a>
+            </li>
+        </ul>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+    <script>
+        const apiEndpoint = "https://api.github.com";
+        const rawEndpoint = "https://raw.githubusercontent.com";
+        const org = "lukas-sites";
+
+        new Vue({
+            el: "#app",
+            data: {
+                services: []
+            },
+            async mounted() {
+                const responses = this.getServices(await this.getRepos());
+                responses.forEach(async resp => {
+                    const info = await resp;
+                    this.services.push(...info["urls"]);
+                });
+                console.log(this.services);
+            },
+            methods: {
+                async getRepos() {
+                    const resp = await fetch(`${apiEndpoint}/orgs/${org}/repos`);
+                    const json = await resp.json();
+                    return json.map(repo => repo["name"]);
+                },
+                async getService(repo) {
+                    let data = { urls: [] };
+                    try {
+                        const resp = await fetch(`${rawEndpoint}/${org}/${repo}/master/service.json`);
+                        data = await resp.json();
+                    } catch (_) { }
+
+                    return data;
+                },
+                getServices(repos) {
+                    return repos.map(repo => this.getService(repo));
+                }
+            }
+        })
+    </script>
+</body>
+
+</html>
