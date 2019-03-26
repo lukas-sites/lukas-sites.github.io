@@ -1,58 +1,78 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
+  <head>
     <title>Lukas' Website</title>
-</head>
+  </head>
 
-<body>
+  <body>
     <div id="app">
-        <ul>
-            <li v-for="(url, index) of services" :key="index">
-                <a :href="url">{{ url.split(".", 1)[0].replace(/(^\w+:|^)\/\//, '') }}</a>
-            </li>
-        </ul>
+      <ul>
+        <li v-for="(url, index) of services" :key="index">
+          <a
+            :href="url.value"
+            >{{ url.value.split(".", 1)[0].replace(/(^\w+:|^)\/\//, '') }}</a
+          >
+          {{ url.alive ? "✔" : "✘" }}
+        </li>
+      </ul>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/vue"></script>
     <script>
-        const apiEndpoint = "https://api.github.com";
-        const rawEndpoint = "https://raw.githubusercontent.com";
-        const org = "lukas-sites";
+      const apiEndpoint = "https://api.github.com";
+      const rawEndpoint = "https://raw.githubusercontent.com";
+      const org = "lukas-sites";
 
-        new Vue({
-            el: "#app",
-            data: {
-                services: []
-            },
-            async mounted() {
-                const responses = this.getServices(await this.getRepos());
-                responses.forEach(async resp => {
-                    const info = await resp;
-                    this.services.push(...info["urls"]);
-                });
-            },
-            methods: {
-                async getRepos() {
-                    const resp = await fetch(`${apiEndpoint}/orgs/${org}/repos`);
-                    const json = await resp.json();
-                    return json.map(repo => repo["name"]);
-                },
-                async getService(repo) {
-                    let data = { urls: [] };
-                    try {
-                        const resp = await fetch(`${rawEndpoint}/${org}/${repo}/master/service.json`);
-                        data = await resp.json();
-                    } catch (_) { }
+      new Vue({
+        el: "#app",
+        data: {
+          services: []
+        },
+        async mounted() {
+          const responses = this.getServices(await this.getRepos());
+          responses.forEach(async resp => {
+            const info = await resp;
+            console.log(info["urls"]);
+            this.services.push(...info["urls"]);
+          });
+        },
+        methods: {
+          async getRepos() {
+            const resp = await fetch(`${apiEndpoint}/orgs/${org}/repos`);
+            const json = await resp.json();
+            return json.map(repo => repo["name"]);
+          },
+          async getService(repo) {
+            let data = { urls: [] };
+            try {
+              const resp = await fetch(
+                `${rawEndpoint}/${org}/${repo}/master/service.json`
+              );
+              data = await resp.json();
 
-                    return data;
-                },
-                getServices(repos) {
-                    return repos.map(repo => this.getService(repo));
+              const urls = [];
+              for (const url of data.urls) {
+                let alive = true;
+                try {
+                  await fetch(url, { method: "HEAD", mode: "no-cors" });
+                } catch (_) {
+                  alive = false;
                 }
-            }
-        })
-    </script>
-</body>
+                urls.push({
+                  value: url,
+                  alive
+                });
+                data.urls = urls;
+              }
+            } catch (_) {}
 
+            return data;
+          },
+          getServices(repos) {
+            return repos.map(repo => this.getService(repo));
+          }
+        }
+      });
+    </script>
+  </body>
 </html>
